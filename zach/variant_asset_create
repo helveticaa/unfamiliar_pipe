@@ -1,0 +1,145 @@
+import hou
+
+ASSET_NAME = "fireplace"
+LOW_POLY_PATH = "default.bgeo"
+HIGH_POLY_PATH = "default.bgeo"
+ASSET_DIR = "/groups/unfamiliar/publish/assets"
+
+### SET UP OBJ CONTEXT ###
+obj = hou.node("/obj")
+#low poly geo import
+lowPoly = obj.createNode("geo", node_name = "low_poly")
+lowPoly.setDisplayFlag(False)
+lowPoly.createNode("box")
+#fileImport = lowPoly.createNode("file")
+#fileImport.parm("file").set(LOW_POLY_PATH)
+#high poly geo import
+highPoly = obj.createNode("geo", node_name = "high_poly")
+highPoly.setDisplayFlag(False)
+highPoly.createNode("box")
+#fileImport = highPoly.createNode("file")
+#fileImport.parm("file").set(HIGH_POLY_PATH)
+obj.layoutChildren()
+
+
+### SET UP STAGE CONTEXT ###
+stage = hou.node("/stage")
+
+#mesh import
+previsPath = "/" + ASSET_NAME + "/geo/previs_" + ASSET_NAME
+prodPath = "/" + ASSET_NAME + "/geo/prod_" + ASSET_NAME
+
+sopimport01 = stage.createNode("sopimport")
+sopimport01.parm("asreference").set(True)
+sopimport01.parm("soppath").set(lowPoly.path())
+sopimport01.parm("primpath").set(previsPath)
+sopimport01.parm("parentprimkind").set("component")
+sopimport01.parm("enable_savepath").set(True)
+sopimport01.parm("savepath").set(ASSET_DIR + previsPath + ".usd")
+
+sopimport02 = stage.createNode("sopimport")
+sopimport02.parm("asreference").set(True)
+sopimport02.parm("soppath").set(highPoly.path())
+sopimport02.parm("primpath").set(prodPath)
+sopimport02.parm("parentprimkind").set("component")
+sopimport02.parm("enable_savepath").set(True)
+sopimport02.parm("savepath").set(ASSET_DIR + prodPath + ".usd")
+
+configureprim01 = stage.createNode("configureprimitive")
+configureprim01.parm("primpattern").set("/" + ASSET_NAME + "/geo/*")
+configureprim01.parm("setkind").set(True)
+configureprim01.parm("kind").set("subcomponent")
+
+#material setup
+pxrPath = "/materials/pxr"
+matLib01 = stage.createNode("materiallibrary")
+matLib01.parm("matpath1").set(pxrPath)
+matLib01.createNode("principledshader")
+
+configlayer01 = stage.createNode("configurelayer")
+configlayer01.parm("setsavepath").set(True)
+configlayer01.parm("savepath").set(ASSET_DIR + "/" + ASSET_NAME + pxrPath + ".usda")
+
+unrealPath = "/materials/unreal"
+matLib02 = stage.createNode("materiallibrary")
+matLib02.parm("matpath1").set(unrealPath)
+matLib02.createNode("principledshader")
+
+configlayer02 = stage.createNode("configurelayer")
+configlayer02.parm("setsavepath").set(True)
+configlayer02.parm("savepath").set(ASSET_DIR + "/" + ASSET_NAME + unrealPath + ".usda")
+
+#build usd layout
+sopimport02.setInput(0, sopimport01, 0)
+configureprim01.setInput(0, sopimport02, 0)
+configlayer01.setInput(0, matLib01, 0)
+configlayer02.setInput(0, matLib02, 0)
+
+reference01 = stage.createNode("reference")
+reference01.parm("primpath").set("/" + ASSET_NAME + "/materials")
+reference01.setInput(0, configureprim01, 0)
+reference01.setInput(4, configlayer01, 0)
+reference01.setInput(4, configlayer02, 0)
+reference01.parm("reftype").set("inputref")
+
+layoutNull = stage.createNode("null", node_name = ASSET_NAME)
+layoutNull.setInput(0, reference01, 0)
+
+#make variant set
+variant_begin = stage.createNode("begincontextoptionsblock", node_name = "variantblock_begin1")
+variant_begin.setColor(hou.Color((0.647,0.569,0.871)))
+variant_begin.parm("layerbreak").set(True)
+variant_end = stage.createNode("addvariant", node_name = "variantblock_end1")
+variant_end.parm("primpath").set(ASSET_NAME)
+variant_end.parm("createoptionsblock").set(True)
+variant_end.parm("variantprimpath").set("`ifs(ch(\"sourceprim\"), chs(\"sourceprimpath\"), chs(\"primpath\"))`")
+
+prune01 = stage.createNode("prune")
+prune01.parm("primpattern1").set("/" + ASSET_NAME + "/geo/prod_" + ASSET_NAME + "/")
+
+assignmaterial01 = stage.createNode("assignmaterial")
+assignmaterial01.parm("primpattern1").set(ASSET_NAME + "/geo")
+assignmaterial01.parm("matspecpath1").set("/" + ASSET_NAME + unrealPath + "/")
+
+previsNull = stage.createNode("null", node_name = "previs")
+
+prune02 = stage.createNode("prune")
+prune02.parm("primpattern1").set("/" + ASSET_NAME + "/geo/previs_" + ASSET_NAME + "/")
+
+assignmaterial02 = stage.createNode("assignmaterial")
+assignmaterial02.parm("primpattern1").set(ASSET_NAME + "/geo")
+assignmaterial02.parm("matspecpath1").set("/" + ASSET_NAME + pxrPath + "/")
+
+prodNull = stage.createNode("null", node_name = "prod")
+
+variant_end.setInput(0, layoutNull, 0)
+variant_end.setInput(1, previsNull, 0)
+variant_end.setInput(2, prodNull, 0)
+previsNull.setInput(0, assignmaterial01, 0)
+assignmaterial01.setInput(0, prune01, 0)
+prune01.setInput(0, variant_begin, 0)
+prodNull.setInput(0, assignmaterial02, 0)
+assignmaterial02.setInput(0, prune02, 0)
+prune02.setInput(0, variant_begin, 0)
+variant_begin.setInput(0, layoutNull, 0)
+
+#set variant
+setVariant = stage.createNode("setvariant")
+setVariant.parm("variantset1").set("model")
+setVariant.parm("variantname1").set("previs")
+
+configLayer03 = stage.createNode("configurelayer")
+configLayer03.parm("setdefaultprim").set(True)
+configLayer03.parm("defaultprim").set("/" + ASSET_NAME)
+
+setVariant.setInput(0, variant_end, 0)
+configLayer03.setInput(0, setVariant, 0)
+
+#make usd rop
+usdRop = stage.createNode("usd_rop")
+usdRop.parm("lopoutput").set(ASSET_DIR + "/" + ASSET_NAME + "/" + ASSET_NAME + ".usda")
+usdRop.setInput(0, configLayer03, 0)
+usdRop.parm("execute").pressButton()
+
+
+stage.layoutChildren()
