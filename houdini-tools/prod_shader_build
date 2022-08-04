@@ -39,11 +39,13 @@ for file in folder:
         print("creating shader for "+shaderName)
     else: continue
     
-    matLibLoc = "stage/"+"pxr_"+str(shaderName)+"/"
+    matLibLoc = "/stage/"+"pxr_"+str(shaderName)+"/"
+    print(matLibLoc)
     matLib = hou.node(matLibLoc)
+    print(matLib)
     #cleanup
     toDelete = hou.vopNodeTypeCategory().nodeType("usdpreviewsurface").instances()
-    print(toDelete)
+    #print(toDelete)
     if(len(toDelete)!= 0):
         toDelete[0].destroy()
     
