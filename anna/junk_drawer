@@ -1,0 +1,27 @@
+
+'''
+import hou
+stage = hou.node("/stage/")
+
+domeLightTemp = stage.createNode("domelight::2.0","throwawayLight")
+exposureAttr = domeLightTemp.parm("inputs:exposure_control").eval()
+print(exposureAttr)
+#domeLightTemp.parm("inputs:exposure").set(3.5)
+#domeLightTemp.parm("primvars:ri:attributes:visibility:camera").set(0)
+
+stage.layoutChildren()
+'''
+
+'''
+import hou 
+
+stage = hou.node("/stage/")
+
+rAsSubd = stage.createNode("sopmodify","RENDER_AS_SUBD")
+print(rAsSubd)
+rAsSubd.parm("unpacktopolygons").set(1)
+rAsSubd.parm("enable_polygonsassubd").set(1)
+rAsSubd.parm("polygonsassubd").set(1)
+
+stage.layoutChildren()
+'''
