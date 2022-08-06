@@ -1,0 +1,133 @@
+import hou 
+import os 
+
+#######function definitions#######
+#sorry for writing poorly formatted code im just a dumb little kid doing my best
+#pls help me do better 
+def defaultShaderBuild(UDIMs):
+    folder = os.listdir(filePath)
+    
+    #determine shaderName
+    named = 0
+    for file in folder:     
+        if(("BaseColor" in file) and (named == 0)):
+            shaderName = file.split("_BaseColor")[0]
+            #remove spaces
+            shaderName = shaderName.replace(" ","_")
+            named = 1
+            print("creating shader for "+shaderName)
+        else: continue
+        
+        matLibLoc = "/stage/"+"unreal_"+str(shaderName)+"/"
+        if(matLibLoc == None):
+            print("yo there's a problem. Double check that you're pointing to the right "+
+            "texture folder and that your texture files are named appropriately.")
+        #print(matLibLoc)
+        matLib = hou.node(matLibLoc)
+        #print(matLib)
+        
+        #Prep material library
+        #cleanup network
+        toDelete = hou.vopNodeTypeCategory().nodeType("usdpreviewsurface").instances()
+        #print(toDelete)
+        if(len(toDelete)!= 0):
+            toDelete[0].destroy()
+        #define output collect
+        outputCollect = hou.node(matLibLoc+"collect1")
+        
+        #Create basic shading network 
+        #create primvar reader
+        usdPrimvarReader = matLib.createNode("usdprimvarreader")
+        usdPrimvarReader.parm("signature").set("float2")
+        usdPrimvarReader.parm("varname").set("st")
+        #create USD Preview Surface and wire into output_collect
+        usdPrevSurface = matLib.createNode("usdpreviewsurface","unreal_"+shaderName)
+        outputCollect.setInput(0,usdPrevSurface,0)
+        #diffuse color
+        diffuseColor = matLib.createNode("usduvtexture::2.0","diffuse_color_usduvtexture")
+        diffuseColor.setInput(1,usdPrimvarReader,0)
+        usdPrevSurface.setInput(0,diffuseColor,4)
+        #metallic
+        metallic = matLib.createNode("usduvtexture::2.0","metallic_usduvtexture")
+        metallic.setInput(1,usdPrimvarReader,0)
+        usdPrevSurface.setInput(4,metallic,0)
+        #roughness
+        roughness = matLib.createNode("usduvtexture::2.0","roughness_usduvtexture")
+        roughness.setInput(1,usdPrimvarReader,0)
+        usdPrevSurface.setInput(5,roughness,0)
+        #normal 
+        normal = matLib.createNode("usduvtexture::2.0","normal_usduvtexture")
+        normal.setInput(1,usdPrimvarReader,0)
+        usdPrevSurface.setInput(10,normal,4)
+        #height
+        height = matLib.createNode("usduvtexture::2.0","height_usduvtexture")
+        height.setInput(1,usdPrimvarReader,0)
+        usdPrevSurface.setInput(11,height,0)
+        #layout nodes inside material library
+        matLib.layoutChildren()
+        
+        #Import texture image files
+        def ImportTextureFile(mapTypeNode, mapTypeString):
+            importedMap = 0
+            for file in folder:
+                if(file.startswith(shaderName) and (mapTypeString in file) and file.endswith(fileFormat) and importedMap == 0):
+                    print ("importing the following file: " + str(file))
+                    fullFilePath = filePath + "/" + str(file)
+                    print ("unmodified full file path is as follows: " + fullFilePath)
+                    if(UDIMs == 1):
+                        #SET FILE PATH USING UDIM SYNTAX
+                        print("yes UDIMs")
+                        #remove ".10**.png" and replace with ".<UDIM>.png"
+                        splitIndex = fullFilePath.find(".10")
+                        udimFilePath = fullFilePath[:splitIndex] + ".<UDIM>"+fileFormat
+                        #set file path to correct UDIM syntax
+                        mapTypeNode.parm("file").set(udimFilePath)
+                        print ("UDIM file path is as follows: " + udimFilePath)
+                    elif(UDIMs == 0):
+                        print("no UDIMs")
+                        #SET FILE PATH DEFAULT METHOD
+                        mapTypeNode.parm("file").set(fullFilePath)
+                    importedMap = 1
+                            
+        ImportTextureFile(diffuseColor, "BaseColor")
+        ImportTextureFile(metallic, "Metallic")
+        ImportTextureFile(roughness, "Roughness")
+        ImportTextureFile(normal, "Normal")
+        ImportTextureFile(height, "Height")
+        
+        #layout all shader nodes
+        matLib.layoutChildren()
+        #end function definitions
+####################################################################################################
+
+#get texture folder and file format     
+#get filepath
+userInput = hou.ui.readInput("Copy and paste the path to the folder where you saved your " + 
+"texture files: ",buttons=("okay","close",),default_choice=0,title="import texture files")
+
+if (userInput[0] == 1):
+    quit()
+filePath = userInput[1]
+
+#print ("unmodified filepath is: " + filePath)
+#change forward slashes to backslashes 
+filePath = filePath.replace("\\","/")
+#print("corrected relative filepath is: " + filePath)
+
+fileFormatNum = hou.ui.displayMessage("What file format did you use to save your texture " + 
+"files?",buttons=(".png",".jpg",".tif","close",),default_choice=0,title="import texture files")
+
+if(fileFormatNum == 0):
+    fileFormat = ".png"
+elif(fileFormatNum == 1):
+    fileFormat = ".jpg"
+elif(fileFormatNum == 2):
+    fileFormat = ".tif"
+elif(fileFormatNum == 3):
+    quit()
+
+UDIMs = hou.ui.displayMessage("Does this asset use UDIMs?",buttons=("No","Yes",),default_choice=0,
+title="import texture files")
+print("UDIMs = " + str(UDIMs))
+
+defaultShaderBuild(UDIMs)
