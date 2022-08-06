@@ -1,6 +1,13 @@
 import hou 
 import os 
 
+#this should be updated to act on all nodes of types pxrtexture pxrnormalmap.
+#but i do not have time to figure out how to do that rn 
+#alas
+#one day.
+#in the meantime, lo siento
+#and make sure your nodes are named precisely
+
 stageNodes = hou.node("/stage/").children()
 matLibNodes = []
 
@@ -19,15 +26,25 @@ for matLibNode in matLibNodes:
     specRoughness = hou.node(matLibLoc + "spec_roughness_pxrtexture")
     normal = hou.node(matLibLoc + "normal_map")
     displacement = hou.node(matLibLoc + "displacement_pxrtexture")
+    mask = hou.node(matLibLoc + "mask_pxrtexture")
     
     def updateTex(texType):
         ogFilename = texType.parm("filename").eval()
         if(".png.tex" not in ogFilename):
-            newFilename = ogFilename.replace(".png","_srgbtex_acescg.png.tex")
-            texType.parm("filename").set(newFilename)
+            #UDIM replace 
+            if("UDIM" in ogFilename):
+                splitIndex = ogFilename.fine(".10")
+                newFilename = ogFilename[:splitIndex] + "_srgbtex_acescg.<UDIM>.png.tex")
+            #default replace 
+            elif("UDIM" not in ogFilename): 
+                newFilename = ogFilename.replace(".png","_srgbtex_acescg.png.tex")
+                texType.parm("filename").set(newFilename)
     
     updateTex(diffuseColor)
     updateTex(specFaceColor)
     updateTex(specRoughness)
     updateTex(normal)
     updateTex(displacement)
+    #if(mask exists)
+    if((hou.node(matLibLoc + "mask_pxrtexture") != None)):
+        updateTex(mask)
