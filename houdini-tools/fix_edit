@@ -1,0 +1,51 @@
+#fix pxrtextures and pxrmixes when running edit shader script
+
+import hou
+
+stageNodes = hou.node("/stage/").children()
+
+matLibNodes = []
+#get all material library nodes in stage
+for node in stageNodes:
+    if(node.name().startswith("pxr")):
+        matLibNodes.append(node)
+        #print(matLibNodes)
+        
+#for each material library node... 
+for matLibNode in matLibNodes:
+    #get all children
+    matLibChildren = matLibNode.children()
+    
+    #FIX PXRTEXTURES
+    #determine which are pxrtextures and add to a list
+    pxrTexNodes = []
+    for node in matLibChildren:
+        if("pxrtexture::3.0" in str(node.type())):
+            pxrTexNodes.append(node)
+        #and the normal map! 
+        elif("pxrnormalmap::3.0" in str(node.type())):
+            pxrTexNodes.append(node)
+            
+    #fix each filepath
+    for texNode in pxrTexNodes:
+        #activate filename parameter
+        texNode.parm("__activate__filename").set(1)
+        #check that filename hasn't already been fixed
+        if(texNode.parm("filename").eval().startswith("./textures")):
+            #get asset name from node name
+            assetName = texNode.name().replace("pxr_","")
+            ogFilename = texNode.parm("filename").eval()
+            newFilename = ogFilename.replace("./textures/","$JOB/assets/"+assetName+"/materials/textures/")
+            texNode.parm("filename").set(newFilename)
+    
+    #FIX PXRMIXES
+    #determine which are pxrmixes and add to a list
+    pxrMixNodes = []
+    for node in matLibChildren:
+        if("pxrmix::3.0" in str(node.type())):
+            pxrMixNodes.append(node)
+            
+    #turn on each color parameter
+    for mixNode in pxrMixNodes:
+        mixNode.parm("__activate__color1").set(1)
+        mixNode.parm("__activate__color2").set(2)
