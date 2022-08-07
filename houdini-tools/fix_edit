@@ -1,3 +1,7 @@
+#./textures/RMAN/shelf_fire_left_middle_Displacement_srgbtex_acescg.png.tex
+#$JOB/assets/displacement_pxrtexture/materials/textures/RMAN/shelf_fire_left_middle_Displacement_srgbtex_acescg.png.tex
+
+
 #fix pxrtextures and pxrmixes when running edit shader script
 
 import hou
@@ -15,6 +19,8 @@ for node in stageNodes:
 for matLibNode in matLibNodes:
     #get all children
     matLibChildren = matLibNode.children()
+    #get asset name from material library node name
+    assetName = matLibNode.name().replace("pxr_","")
     
     #FIX PXRTEXTURES
     #determine which are pxrtextures and add to a list
@@ -32,8 +38,6 @@ for matLibNode in matLibNodes:
         texNode.parm("__activate__filename").set(1)
         #check that filename hasn't already been fixed
         if(texNode.parm("filename").eval().startswith("./textures")):
-            #get asset name from node name
-            assetName = texNode.name().replace("pxr_","")
             ogFilename = texNode.parm("filename").eval()
             newFilename = ogFilename.replace("./textures/","$JOB/assets/"+assetName+"/materials/textures/")
             texNode.parm("filename").set(newFilename)
