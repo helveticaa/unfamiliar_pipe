@@ -1,50 +1,46 @@
 import hou 
 import os 
 
-#this should be updated to act on all nodes of types pxrtexture pxrnormalmap.
-#but i do not have time to figure out how to do that rn 
-#alas
-#one day.
-#in the meantime, lo siento
-#and make sure your nodes are named precisely
+#this is a wee bit hacky i think but it works so 
+#woo
 
 stageNodes = hou.node("/stage/").children()
-matLibNodes = []
 
+matLibNodes = []
+#get all material library nodes in stage
 for node in stageNodes:
     if(node.name().startswith("pxr")):
         matLibNodes.append(node)
         #print(matLibNodes)
+        
+#for each material library node... 
 for matLibNode in matLibNodes:
-    #print(matLibNode)
-    matLibLoc = "/stage/"+str(matLibNode)+"/"
-    #print(matLibLoc)
+    #get all children
+    matLibChildren = matLibNode.children()
     
-    diffuseColor = hou.node(matLibLoc + "diffuse_color_pxrtexture")
-    print(diffuseColor)
-    specFaceColor = hou.node(matLibLoc + "spec_face_color_pxrtexture")
-    specRoughness = hou.node(matLibLoc + "spec_roughness_pxrtexture")
-    normal = hou.node(matLibLoc + "normal_map")
-    displacement = hou.node(matLibLoc + "displacement_pxrtexture")
-    mask = hou.node(matLibLoc + "mask_pxrtexture")
-    
-    def updateTex(texType):
-        ogFilename = texType.parm("filename").eval()
-        if(".png.tex" not in ogFilename):
-            #UDIM replace 
-            if("UDIM" in ogFilename):
-                splitIndex = ogFilename.fine(".10")
-                newFilename = ogFilename[:splitIndex] + "_srgbtex_acescg.<UDIM>.png.tex")
-            #default replace 
-            elif("UDIM" not in ogFilename): 
+    #determine which are pxrtextures and add to a list
+    pxrTexNodes = []
+    for node in matLibChildren:
+        if("pxrtexture::3.0" in str(node.type())):
+            pxrTexNodes.append(node)
+        #and the normal map! 
+        elif("pxrnormalmap::3.0" in str(node.type())):
+            pxrTexNodes.append(node)
+            
+    #update each filename to point to the tex file (accounting for UDIMs) 
+    for texNode in pxrTexNodes:
+        #check that filename hasn't already been updated
+        if("_srgbtex_acescg" not in texNode.parm("filename").eval()):
+            print("its fixin time")
+            ogFilename = texNode.parm("filename").eval()
+            #default update
+            if("UDIM" not in ogFilename):
+                print("default update")
                 newFilename = ogFilename.replace(".png","_srgbtex_acescg.png.tex")
-                texType.parm("filename").set(newFilename)
-    
-    updateTex(diffuseColor)
-    updateTex(specFaceColor)
-    updateTex(specRoughness)
-    updateTex(normal)
-    updateTex(displacement)
-    #if(mask exists)
-    if((hou.node(matLibLoc + "mask_pxrtexture") != None)):
-        updateTex(mask)
+                texNode.parm("filename").set(newFilename)
+            #UDIM update
+            elif("UDIM" in ogFilename):
+                print("update UDIMs")
+                splitIndex = ogFilename.find(".<UDIM>")
+                newFilename = ogFilename[:splitIndex] + "_srgbtex_acescg.<UDIM>.png.tex"
+                texNode.parm("filename").set(newFilename)
