@@ -1,0 +1,29 @@
+import hou
+
+#Grab all of the base alembics in the .abc file and connect a node to them
+nodeTypeAlembic = hou.nodeType(hou.sopNodeTypeCategory(), 'alembic')
+abcNodes = nodeTypeAlembic.instances()
+for node in list(abcNodes):
+    n = node
+    path = n.node("..")
+    nullNode = path.createNode("null", "OUT")
+    nullNode.setInput(0, node, 0)
+    
+#Create an object merge and merge all of the alembics into one 
+#object and create a USD for LOP context
+obj = hou.node("/obj")
+mergeABC = obj.createNode('geo', 'AlembicToUSD')
+mergeNode = mergeABC.createNode('object_merge', 'grabABCs')
+numObjects = mergeNode.parm("numobj")
+numObjects.set(len(abcNodes))
+count = 1
+objectParm = "objpath"
+for node in list(abcNodes):
+    tempParm = mergeNode.parm(objectParm + str(count))
+    tempParm.set(node.path())
+    count += 1
+    
+usdExport = mergeABC.createNode('usdexport', 'usdExport')
+usdExport.parm("trange").set("normal")
+usdExport.parm("lopoutput").set("$HIP/anim/animAlembic.usd")
+usdExport.setInput(0, mergeNode, 0)
